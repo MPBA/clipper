@@ -54,6 +54,7 @@ class DockerContainerManager(ContainerManager):
                  redis_port=6379,
                  prometheus_port=9090,
                  docker_network="clipper_network",
+                 query_container_id=None,
                  extra_container_kwargs=None):
         """
         Parameters
@@ -111,6 +112,10 @@ class DockerContainerManager(ContainerManager):
         self.docker_network = docker_network
 
         self.docker_client = docker.from_env()
+        if query_container_id is None:
+            self.query_container_id = random.randint(0, 100000)
+        else:
+            self.query_container_id = query_container_id
         if extra_container_kwargs is None:
             self.extra_container_kwargs = {}
         else:
@@ -249,8 +254,7 @@ class DockerContainerManager(ContainerManager):
                          thread_pool_size=qf_http_thread_pool_size,
                          timeout_request=qf_http_timeout_request,
                          timeout_content=qf_http_timeout_content)
-        query_container_id = random.randint(0, 100000)
-        query_name = "query_frontend-{}".format(query_container_id)
+        query_name = "query_frontend-{}".format(self.query_container_id)
         self.clipper_query_port = find_unbound_port(self.clipper_query_port)
         self.clipper_rpc_port = find_unbound_port(self.clipper_rpc_port)
         query_labels = self.common_labels.copy()
@@ -277,7 +281,7 @@ class DockerContainerManager(ContainerManager):
 
         # Metric Section
         query_frontend_metric_name = "query_frontend_exporter-{}".format(
-            query_container_id)
+            self.query_container_id)
         run_query_frontend_metric_image(
             query_frontend_metric_name, self.docker_client, query_name,
             frontend_exporter_image, self.common_labels,
